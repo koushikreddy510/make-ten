@@ -15,6 +15,8 @@ export interface ThemeColors {
   /** Stars, coins and highlights. */
   accent: string;
   success: string;
+  /** Text on `success`. */
+  onSuccess: string;
   overlay: string;
 }
 

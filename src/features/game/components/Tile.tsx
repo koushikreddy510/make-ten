@@ -16,7 +16,8 @@ interface Props {
 const useStyles = createStyles((t) => ({
   tile: { borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 3, borderBottomColor: 'rgba(0,0,0,0.2)' },
   digit: { color: t.tileInk, fontWeight: '800' },
-  selected: { borderWidth: 3, borderColor: t.mode === 'dark' ? '#ffffff' : t.colors.text },
+  // Dark ink always contrasts with the tile, and the glow keeps the ring visible on the background.
+  selected: { borderWidth: 3, borderColor: t.tileInk, shadowColor: t.colors.accent, shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
   highlighted: { borderWidth: 3, borderColor: t.colors.accent },
 }));
 

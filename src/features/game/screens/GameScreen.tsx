@@ -22,8 +22,10 @@ import {
 
 const useStyles = createStyles((t) => ({
   chipRow: { height: 40, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  chipText: { fontWeight: '700', fontSize: 16 },
   chip: { backgroundColor: t.colors.surface, borderRadius: radius.pill, paddingHorizontal: 16, paddingVertical: 6 },
   chipOk: { backgroundColor: t.colors.success },
+  chipOkText: { color: t.colors.onSuccess },
   board: { flex: 1, justifyContent: 'center' },
   stars: { color: t.colors.accent, fontSize: 38, textAlign: 'center' },
   starOff: { color: t.colors.surfaceDeep },
@@ -80,7 +82,7 @@ export function GameScreen({ level }: { level: number }) {
       <View style={styles.chipRow}>
         {game.selected.length > 1 ? (
           <View style={[styles.chip, sum === 10 && styles.chipOk]}>
-            <Text style={{ fontWeight: '700', fontSize: 16 }}>
+            <Text style={[styles.chipText, sum === 10 && styles.chipOkText]}>
               {game.selected.map((p) => game.board[p.r][p.c]).join(' + ')} = {sum}
             </Text>
           </View>
