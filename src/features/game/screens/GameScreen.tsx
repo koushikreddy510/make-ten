@@ -1,11 +1,14 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { Share, View } from 'react-native';
 import { createStyles, radius } from '@/core/theme';
 import { Button, Screen, Text } from '@/core/ui';
 import { interstitialShown } from '@/features/ads/adsSlice';
 import { useAds } from '@/features/ads/AdsProvider';
 import { REWARDS, shouldShowInterstitial } from '@/features/ads/policy';
+import { streakOn } from '@/features/daily/dailySlice';
+import { todayKey } from '@/features/daily/dateKey';
+import { buildShareText } from '@/features/daily/share';
 import { coinsEarned } from '@/features/player/playerSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectDifficulty } from '@/store/selectors';
@@ -17,7 +20,7 @@ import { LEVELS_PER_DIFFICULTY } from '../difficulty';
 import { coinsFor, selectionSum, starsFor } from '../engine';
 import { useGameSession } from '../hooks/useGameSession';
 import {
-  bonusClaimed, cellTapped, continueGranted, hintUsed, paused, resumed, sessionStarted, shuffleUsed, undoUsed,
+  bonusClaimed, cellTapped, continueGranted, dailyStarted, hintUsed, paused, resumed, sessionStarted, shuffleUsed, undoUsed,
 } from '../sessionSlice';
 
 const useStyles = createStyles((t) => ({
@@ -33,7 +36,8 @@ const useStyles = createStyles((t) => ({
   center: { textAlign: 'center' },
 }));
 
-export function GameScreen({ level }: { level: number }) {
+/** Plays a numbered level, or today's daily board when `daily` is set. */
+export function GameScreen({ level, daily }: { level?: number; daily?: boolean }) {
   const styles = useStyles();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -44,18 +48,23 @@ export function GameScreen({ level }: { level: number }) {
   const bonusTaken = useAppSelector((s) => s.session.bonusClaimed);
   const adState = useAppSelector((s) => s.ads);
   const adsRemoved = useAppSelector((s) => s.player.adsRemoved);
-  useGameSession(difficulty, level);
+  const dailyState = useAppSelector((s) => s.daily);
+  const today = todayKey();
+  useGameSession(daily ? { kind: 'daily', dateKey: today } : { kind: 'level', difficulty, level: level ?? 1 });
 
-  if (!game || game.level !== level || game.difficulty !== difficulty) return null;
+  if (!game) return null;
+  if (daily ? game.mode !== 'daily' || game.dateKey !== today : game.mode !== 'level' || game.level !== level || game.difficulty !== difficulty) return null;
+  const currentLevel = game.level;
 
   const stars = starsFor(game);
   const coins = coinsFor(stars);
   const sum = selectionSum(game);
-  const exit = () => router.replace('/levels');
-  const restart = () => dispatch(sessionStarted({ difficulty, level }));
+  const exit = () => router.replace(daily ? '/daily' : '/levels');
+  const restart = () => dispatch(daily ? dailyStarted({ dateKey: today }) : sessionStarted({ difficulty, level: currentLevel }));
+  const share = () => Share.share({ message: buildShareText({ dateKey: today, rule: game.link, stars, score: game.score, movesLeft: game.movesLeft, streak: Math.max(1, streakOn(dailyState, today)) }) });
 
   const goNext = async () => {
-    const next = level + 1;
+    const next = currentLevel + 1;
     const now = Date.now();
     if (shouldShowInterstitial({ nextLevel: next, ...adState, adsRemoved, now })) {
       await ads.showInterstitial();
@@ -74,7 +83,7 @@ export function GameScreen({ level }: { level: number }) {
   };
 
   const loseTitle = game.timeLeft === 0 ? "Time's up" : game.movesLeft <= 0 ? 'Out of moves' : 'No moves left';
-  const hasNext = level < LEVELS_PER_DIFFICULTY;
+  const hasNext = !daily && currentLevel < LEVELS_PER_DIFFICULTY;
 
   return (
     <Screen>
@@ -110,22 +119,24 @@ export function GameScreen({ level }: { level: number }) {
         <Overlay title="Paused">
           <Button label="Resume" variant="primary" size="big" onPress={() => dispatch(resumed())} />
           <Button label="Restart level" onPress={restart} />
-          <Button label="Levels" onPress={exit} />
+          <Button label={daily ? 'Daily' : 'Levels'} onPress={exit} />
         </Overlay>
       ) : null}
 
       {game.status === 'won' ? (
-        <Overlay title={`Level ${level} clear!`}>
+        <Overlay title={daily ? 'Daily clear!' : `Level ${currentLevel} clear!`}>
           <Text style={styles.stars}>
             {'★'.repeat(stars)}
             <Text style={[styles.stars, styles.starOff]}>{'★'.repeat(3 - stars)}</Text>
           </Text>
           <Text style={styles.big}>{game.score}</Text>
           <Text variant="muted" style={styles.center}>+{coins} coins</Text>
-          {hasNext ? <Button label="Next level" variant="primary" size="big" onPress={goNext} /> : <Text variant="muted" style={styles.center}>You finished every level here. Try a harder difficulty!</Text>}
+          {daily ? <Button label="Share result" variant="primary" size="big" onPress={share} /> : null}
+          {hasNext ? <Button label="Next level" variant="primary" size="big" onPress={goNext} /> : null}
+          {!daily && !hasNext ? <Text variant="muted" style={styles.center}>You finished every level here. Try a harder difficulty!</Text> : null}
           {!bonusTaken ? <Button label={`Watch ad · double coins (+${coins})`} onPress={doubleCoins} /> : null}
           <Button label="Replay" onPress={restart} />
-          <Button label="Levels" onPress={exit} />
+          <Button label={daily ? 'Daily' : 'Levels'} onPress={exit} />
         </Overlay>
       ) : null}
 

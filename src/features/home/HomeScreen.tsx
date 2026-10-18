@@ -4,6 +4,8 @@ import { View } from 'react-native';
 import { createStyles, fontSize } from '@/core/theme';
 import { Button, Screen, Text } from '@/core/ui';
 import { DIFFICULTIES, LEVELS_PER_DIFFICULTY } from '@/features/game/difficulty';
+import { streakOn } from '@/features/daily/dailySlice';
+import { todayKey } from '@/features/daily/dateKey';
 import { useAppSelector } from '@/store/hooks';
 import { selectContinueLevel, selectDifficulty } from '@/store/selectors';
 
@@ -21,6 +23,10 @@ export function HomeScreen() {
   const difficulty = useAppSelector(selectDifficulty);
   const level = useAppSelector(selectContinueLevel);
   const coins = useAppSelector((s) => s.player.coins);
+  const daily = useAppSelector((s) => s.daily);
+  const today = todayKey();
+  const streak = streakOn(daily, today);
+  const doneToday = !!daily.results[today];
   const finished = level > LEVELS_PER_DIFFICULTY;
   const label = level === 1 ? 'Play · Level 1' : `Continue · Level ${Math.min(level, LEVELS_PER_DIFFICULTY)}`;
 
@@ -39,6 +45,7 @@ export function HomeScreen() {
           size="big"
           onPress={() => router.push({ pathname: '/game/[level]', params: { level: String(Math.min(level, LEVELS_PER_DIFFICULTY)) } })}
         />
+        <Button label={`Daily challenge${streak > 0 ? ` · 🔥 ${streak}` : ''}${doneToday ? ' ✓' : ''}`} onPress={() => router.push('/daily')} />
         <Button label="Levels" onPress={() => router.push('/levels')} />
         <Button label="Settings" onPress={() => router.push('/settings')} />
       </View>

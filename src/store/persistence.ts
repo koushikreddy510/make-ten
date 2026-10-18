@@ -1,13 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_THEME_ID, isThemeId } from '@/core/theme/themes';
 import { DIFFICULTY_ORDER } from '@/features/game/difficulty';
+import { DailyState, initialDailyState } from '@/features/daily/dailySlice';
+import { isDateKey } from '@/features/daily/dateKey';
 import { initialPlayerState, PlayerState } from '@/features/player/playerSlice';
 import { initialProgressState, ProgressState } from '@/features/progress/progressSlice';
 import { initialSettingsState, SettingsState } from '@/features/settings/settingsSlice';
 
 export const SAVE_KEY = 'maketen.save';
 /** Bump this when the saved shape changes, and teach `migrate` how to read the old one. */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** The parts of the app state that survive closing the app. */
 export interface PersistedState {
@@ -15,6 +17,7 @@ export interface PersistedState {
   player: PlayerState;
   settings: SettingsState;
   progress: ProgressState;
+  daily: DailyState;
 }
 
 export const defaultPersisted = (): PersistedState => ({
@@ -22,6 +25,7 @@ export const defaultPersisted = (): PersistedState => ({
   player: { ...initialPlayerState },
   settings: { ...initialSettingsState },
   progress: initialProgressState(),
+  daily: { ...initialDailyState, results: {} },
 });
 
 const isObject = (v: unknown): v is Record<string, any> => typeof v === 'object' && v !== null;
@@ -52,6 +56,19 @@ export function migrate(raw: unknown): PersistedState {
       if (typeof p.unlocked === 'number' && p.unlocked >= 1) out.progress[id].unlocked = Math.floor(p.unlocked);
       if (isObject(p.stars)) out.progress[id].stars = p.stars;
       if (isObject(p.best)) out.progress[id].best = p.best;
+    }
+  }
+  if (isObject(raw.daily)) {
+    const d = raw.daily;
+    if (typeof d.streak === 'number' && d.streak >= 0) out.daily.streak = Math.floor(d.streak);
+    if (typeof d.bestStreak === 'number' && d.bestStreak >= 0) out.daily.bestStreak = Math.floor(d.bestStreak);
+    if (isDateKey(d.lastCompleted)) out.daily.lastCompleted = d.lastCompleted;
+    if (isObject(d.results)) {
+      for (const [key, r] of Object.entries(d.results)) {
+        if (isDateKey(key) && isObject(r) && typeof r.stars === 'number' && typeof r.score === 'number') {
+          out.daily.results[key] = { stars: r.stars, score: r.score };
+        }
+      }
     }
   }
   return out;

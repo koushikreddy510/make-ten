@@ -1,11 +1,12 @@
 import { applyGravity, cloneBoard, countTiles, emptyBoard, filledCells } from './board';
 import { DIFFICULTIES } from './difficulty';
+import { dailyRule, dailySettings } from './daily';
 import { generateBoard } from './generator';
 import { levelSettings } from './levels';
 import { canLink, MAX_GROUP, sameCell, TARGET_SUM } from './rules';
 import { hashSeed, mulberry32, Rng, shuffleInPlace } from './rng';
 import { findGroup } from './solver';
-import { Board, Cell, DifficultyId, LevelSettings } from './types';
+import { Board, Cell, DifficultyId, LevelSettings, LinkRule } from './types';
 
 const BASE_POINTS: Record<number, number> = { 2: 20, 3: 60, 4: 120 };
 const MAX_COMBO = 5;
@@ -22,7 +23,14 @@ interface Snapshot {
 
 export type Status = 'playing' | 'won' | 'lost';
 
+export type GameMode = 'level' | 'daily';
+
 export interface GameState extends Snapshot {
+  mode: GameMode;
+  /** For daily games, the date the board was made for (YYYY-MM-DD). */
+  dateKey: string | null;
+  /** How tiles may be linked in this game. Daily games can use a different rule than their difficulty. */
+  link: LinkRule;
   difficulty: DifficultyId;
   level: number;
   settings: LevelSettings;
@@ -38,15 +46,21 @@ export interface GameState extends Snapshot {
   continued: boolean;
 }
 
-/** Creates the starting state of a level. The board is the same every time for a given level. */
-export function newGame(difficulty: DifficultyId, level: number): GameState {
+function startState(
+  mode: GameMode,
+  dateKey: string | null,
+  difficulty: DifficultyId,
+  level: number,
+  link: LinkRule,
+  settings: LevelSettings,
+  seed: string,
+): GameState {
   const cfg = DIFFICULTIES[difficulty];
-  const settings = levelSettings(difficulty, level);
-  const rng = mulberry32(hashSeed(`${difficulty}-${level}`));
+  const rng = mulberry32(hashSeed(seed));
   let board = generateBoard(cfg.rows, cfg.cols, settings, rng);
-  if (!findGroup(board, cfg.link)) board = shuffleBoard(board, difficulty, rng);
+  if (!findGroup(board, link)) board = shuffleBoard(board, link, rng);
   return {
-    difficulty, level, settings, board,
+    mode, dateKey, link, difficulty, level, settings, board,
     selected: [], hint: null, score: 0, combo: 0, lastClearAt: null,
     movesLeft: settings.moves, timeLeft: settings.timeLimit,
     hintsLeft: cfg.hints, shufflesLeft: cfg.shuffles, undosLeft: cfg.undos,
@@ -54,15 +68,24 @@ export function newGame(difficulty: DifficultyId, level: number): GameState {
   };
 }
 
+/** Creates the starting state of a level. The board is the same every time for a given level. */
+export function newGame(difficulty: DifficultyId, level: number): GameState {
+  return startState('level', null, difficulty, level, DIFFICULTIES[difficulty].link, levelSettings(difficulty, level), `${difficulty}-${level}`);
+}
+
+/** The daily game for a date. Everyone gets the same board and rule that day, with no server needed. */
+export function newDailyGame(dateKey: string): GameState {
+  return startState('daily', dateKey, 'medium', 0, dailyRule(dateKey), dailySettings(), `daily-${dateKey}`);
+}
+
 /** Same tiles in new positions, retried until at least one group exists. */
-export function shuffleBoard(board: Board, difficulty: DifficultyId, rng: Rng): Board {
-  const { rows, cols, link } = DIFFICULTIES[difficulty];
+export function shuffleBoard(board: Board, link: LinkRule, rng: Rng): Board {
   const spots = filledCells(board);
   const values = spots.map((s) => board[s.r][s.c] as number);
   let result = board;
   for (let i = 0; i < SHUFFLE_ATTEMPTS; i++) {
     shuffleInPlace(values, rng);
-    result = emptyBoard(rows, cols);
+    result = emptyBoard(board.length, board[0].length);
     spots.forEach((s, k) => (result[s.r][s.c] = values[k]));
     if (findGroup(result, link)) break;
   }
@@ -77,8 +100,8 @@ const snapshot = (s: GameState): Snapshot => ({
 function settle(s: GameState, rng: Rng): GameState {
   if (countTiles(s.board) === 0 || s.score >= s.settings.target) return { ...s, status: 'won' };
   if (s.movesLeft <= 0) return { ...s, status: 'lost' };
-  if (!findGroup(s.board, DIFFICULTIES[s.difficulty].link)) {
-    if (s.shufflesLeft > 0) return { ...s, board: shuffleBoard(s.board, s.difficulty, rng) };
+  if (!findGroup(s.board, s.link)) {
+    if (s.shufflesLeft > 0) return { ...s, board: shuffleBoard(s.board, s.link, rng) };
     return { ...s, status: 'lost' };
   }
   return s;
@@ -90,7 +113,6 @@ export const selectionSum = (s: GameState): number =>
 /** Handles a tap on a tile: select it, drop it, start over, or clear a finished group. */
 export function tapCell(s: GameState, cell: Cell, now: number, rng: Rng = Math.random): GameState {
   if (s.status !== 'playing' || s.board[cell.r][cell.c] === null) return s;
-  const cfg = DIFFICULTIES[s.difficulty];
 
   const index = s.selected.findIndex((p) => sameCell(p, cell));
   if (index >= 0) {
@@ -99,7 +121,7 @@ export function tapCell(s: GameState, cell: Cell, now: number, rng: Rng = Math.r
   }
 
   const last = s.selected[s.selected.length - 1];
-  const group = last && canLink(cfg.link, s.board, last, cell) ? [...s.selected, cell] : [cell];
+  const group = last && canLink(s.link, s.board, last, cell) ? [...s.selected, cell] : [cell];
   const sum = group.reduce((n, p) => n + (s.board[p.r][p.c] as number), 0);
 
   if (sum === TARGET_SUM && group.length >= 2) return clearGroup(s, group, now, rng);
@@ -131,13 +153,13 @@ function clearGroup(s: GameState, group: Cell[], now: number, rng: Rng): GameSta
 
 export function applyHint(s: GameState): GameState {
   if (s.status !== 'playing' || s.hintsLeft <= 0) return s;
-  const group = findGroup(s.board, DIFFICULTIES[s.difficulty].link);
+  const group = findGroup(s.board, s.link);
   return group ? { ...s, hint: group, selected: [], hintsLeft: s.hintsLeft - 1 } : s;
 }
 
 export function applyShuffle(s: GameState, rng: Rng = Math.random): GameState {
   if (s.status !== 'playing' || s.shufflesLeft <= 0) return s;
-  return { ...s, board: shuffleBoard(s.board, s.difficulty, rng), selected: [], hint: null, shufflesLeft: s.shufflesLeft - 1 };
+  return { ...s, board: shuffleBoard(s.board, s.link, rng), selected: [], hint: null, shufflesLeft: s.shufflesLeft - 1 };
 }
 
 export function applyUndo(s: GameState): GameState {
@@ -160,9 +182,7 @@ export function applyContinue(s: GameState, extra: { moves: number; seconds: num
     timeLeft: outOfTime ? extra.seconds : s.timeLeft,
   };
   // If the level ended because no groups were left, mix the tiles so play can go on.
-  return findGroup(next.board, DIFFICULTIES[s.difficulty].link)
-    ? next
-    : { ...next, board: shuffleBoard(next.board, s.difficulty, rng) };
+  return findGroup(next.board, s.link) ? next : { ...next, board: shuffleBoard(next.board, s.link, rng) };
 }
 
 /** Moves the clock one second. */

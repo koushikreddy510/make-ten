@@ -1,5 +1,6 @@
 import { createListenerMiddleware, isAnyOf } from '@reduxjs/toolkit';
 import { levelFinished } from '@/features/ads/adsSlice';
+import { dailyCompleted } from '@/features/daily/dailySlice';
 import { coinsEarned } from '@/features/player/playerSlice';
 import { levelCompleted } from '@/features/progress/progressSlice';
 import { cellTapped, hintUsed, resultRecorded, shuffleUsed, undoUsed } from '@/features/game/sessionSlice';
@@ -20,6 +21,7 @@ export const toPersisted = (s: RootState): PersistedState => ({
   player: s.player,
   settings: s.settings,
   progress: s.progress,
+  daily: s.daily,
 });
 
 /**
@@ -33,7 +35,7 @@ export function createListeners(deps: ListenerDeps) {
   // Save whenever anything that should survive a restart changes.
   start({
     predicate: (_action, now, before) =>
-      now.player !== before.player || now.settings !== before.settings || now.progress !== before.progress,
+      now.player !== before.player || now.settings !== before.settings || now.progress !== before.progress || now.daily !== before.daily,
     effect: (_action, api) => {
       const state = api.getState();
       deps.configureFeedback(state.settings);
@@ -49,9 +51,13 @@ export function createListeners(deps: ListenerDeps) {
       if (!game) return;
       const stars = starsFor(game);
       api.dispatch(resultRecorded());
-      api.dispatch(levelCompleted({ difficulty: game.difficulty, level: game.level, stars, score: game.score }));
+      if (game.mode === 'daily' && game.dateKey) {
+        api.dispatch(dailyCompleted({ dateKey: game.dateKey, stars, score: game.score }));
+      } else {
+        api.dispatch(levelCompleted({ difficulty: game.difficulty, level: game.level, stars, score: game.score }));
+        api.dispatch(levelFinished());
+      }
       api.dispatch(coinsEarned(coinsFor(stars)));
-      api.dispatch(levelFinished());
     },
   });
 

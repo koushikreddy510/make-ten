@@ -64,6 +64,10 @@ Each difficulty (`difficulty.ts`) sets the board size, how tiles may be linked, 
 
 Boards are generated from a seed made of the difficulty and level number, so a level is identical every time. The tests play every level with a simple bot to make sure each one can be won.
 
+## Daily challenge
+
+One board a day, the same for everyone, with a **rule of the day** that rotates through free pick, straight lines, touching and side by side. The board and rule come from the date alone (`features/game/daily.ts`), so no server is needed. Finishing it keeps a streak (`features/daily/dailySlice.ts`), and the result can be shared as plain text (`features/daily/share.ts`). Dates use the player's own calendar day.
+
 ## What a returning player sees
 
 Progress (unlocked level, stars, best score, coins, difficulty, theme, settings) is saved on the device after every change. On the next launch:

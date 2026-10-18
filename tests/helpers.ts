@@ -1,11 +1,10 @@
-import { DIFFICULTIES } from '@/features/game/difficulty';
 import { GameState, tapCell } from '@/features/game/engine';
 import { mulberry32 } from '@/features/game/rng';
 import { findGroup } from '@/features/game/solver';
 
 /** Clears one group the way a player would, one tap at a time. */
 export function clearOne(s: GameState, now: number): GameState {
-  const group = findGroup(s.board, DIFFICULTIES[s.difficulty].link);
+  const group = findGroup(s.board, s.link);
   if (!group) return s;
   return group.reduce((state, cell) => tapCell(state, cell, now, mulberry32(1)), s);
 }

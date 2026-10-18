@@ -1,6 +1,6 @@
 import { createSlice, current, PayloadAction } from '@reduxjs/toolkit';
 import {
-  applyContinue, applyHint, applyShuffle, applyUndo, GameState, newGame, tapCell, tickTimer,
+  applyContinue, applyHint, applyShuffle, applyUndo, GameState, newDailyGame, newGame, tapCell, tickTimer,
 } from './engine';
 import { Cell, DifficultyId } from './types';
 
@@ -22,6 +22,12 @@ const sessionSlice = createSlice({
   reducers: {
     sessionStarted(state, action: PayloadAction<{ difficulty: DifficultyId; level: number }>) {
       state.game = newGame(action.payload.difficulty, action.payload.level);
+      state.paused = false;
+      state.resultRecorded = false;
+      state.bonusClaimed = false;
+    },
+    dailyStarted(state, action: PayloadAction<{ dateKey: string }>) {
+      state.game = newDailyGame(action.payload.dateKey);
       state.paused = false;
       state.resultRecorded = false;
       state.bonusClaimed = false;
@@ -60,7 +66,7 @@ const sessionSlice = createSlice({
 });
 
 export const {
-  sessionStarted, cellTapped, hintUsed, shuffleUsed, undoUsed, clockTicked, paused, resumed, resultRecorded,
+  sessionStarted, dailyStarted, cellTapped, hintUsed, shuffleUsed, undoUsed, clockTicked, paused, resumed, resultRecorded,
   continueGranted, bonusClaimed,
 } = sessionSlice.actions;
 export const sessionReducer = sessionSlice.reducer;

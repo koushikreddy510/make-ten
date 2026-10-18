@@ -11,6 +11,14 @@ export const RULE_TEXT: Record<LinkRule, string> = {
   touch4: 'Tiles must touch side to side. Corners do not count.',
 };
 
+/** Short names, for headings and share messages. */
+export const RULE_NAME: Record<LinkRule, string> = {
+  any: 'Free pick',
+  line: 'Straight lines',
+  touch8: 'Touching',
+  touch4: 'Side by side',
+};
+
 export const sameCell = (a: Cell, b: Cell): boolean => a.r === b.r && a.c === b.c;
 
 /** Neighbours of `a`, including diagonals. Used by the generator, whatever the player's rule is. */

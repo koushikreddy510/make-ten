@@ -3,7 +3,7 @@ import { Animated, Pressable, View } from 'react-native';
 import { createStyles, radius } from '@/core/theme';
 import { Text } from '@/core/ui';
 import { GameState } from '../engine';
-import { RULE_TEXT } from '../rules';
+import { RULE_NAME, RULE_TEXT } from '../rules';
 import { DIFFICULTIES } from '../difficulty';
 
 const MAX_COMBO_SHOWN = 5;
@@ -42,7 +42,7 @@ export function GameHeader({ game, onPause }: { game: GameState; onPause: () => 
           <Text>❚❚</Text>
         </Pressable>
         <View style={styles.center}>
-          <Text variant="caption">{cfg.label.toUpperCase()} · LEVEL {game.level}</Text>
+          <Text variant="caption">{game.mode === 'daily' ? `DAILY · ${RULE_NAME[game.link].toUpperCase()}` : `${cfg.label.toUpperCase()} · LEVEL ${game.level}`}</Text>
           <Animated.Text style={[styles.score, { transform: [{ scale: bump }] }]}>{game.score}</Animated.Text>
         </View>
         <View style={styles.pill}>
@@ -54,7 +54,7 @@ export function GameHeader({ game, onPause }: { game: GameState; onPause: () => 
         <Text variant="caption">GOAL {game.settings.target}</Text>
         {game.combo > 1 ? <Text variant="caption" style={styles.combo}>COMBO ×{Math.min(game.combo, MAX_COMBO_SHOWN)}</Text> : null}
       </View>
-      <Text variant="small" style={styles.rule}>{RULE_TEXT[cfg.link]}</Text>
+      <Text variant="small" style={styles.rule}>{RULE_TEXT[game.link]}</Text>
     </View>
   );
 }

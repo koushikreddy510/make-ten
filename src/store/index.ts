@@ -1,4 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import { dailyReducer } from '@/features/daily/dailySlice';
 import { adsReducer } from '@/features/ads/adsSlice';
 import { sessionReducer } from '@/features/game/sessionSlice';
 import { playerReducer } from '@/features/player/playerSlice';
@@ -11,6 +12,7 @@ const rootReducer = combineReducers({
   player: playerReducer,
   settings: settingsReducer,
   progress: progressReducer,
+  daily: dailyReducer,
   session: sessionReducer,
   ads: adsReducer,
 });
@@ -26,6 +28,7 @@ export function makeStore(deps: ListenerDeps, preloaded?: PersistedState) {
       player: preloaded.player,
       settings: preloaded.settings,
       progress: preloaded.progress,
+      daily: preloaded.daily,
     },
     middleware: (getDefault) => getDefault().prepend(listeners.middleware),
   });
