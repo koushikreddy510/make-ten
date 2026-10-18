@@ -4,6 +4,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '@/core/theme';
 import { DevAdsProvider } from '@/features/ads/AdsProvider';
+import { DevPurchasesProvider } from '@/features/purchases/PurchasesProvider';
 import { StoreProvider } from '@/store/StoreProvider';
 import { useAppSelector } from '@/store/hooks';
 
@@ -22,7 +23,9 @@ function Providers() {
   return (
     <ThemeProvider themeId={themeId}>
       <DevAdsProvider>
-        <ThemedStack />
+        <DevPurchasesProvider>
+          <ThemedStack />
+        </DevPurchasesProvider>
       </DevAdsProvider>
     </ThemeProvider>
   );

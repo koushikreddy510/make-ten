@@ -88,6 +88,10 @@ Ads sit behind an interface (`features/ads/AdsProvider.tsx`) so the game never t
 - **Rewarded ads** are always optional: +5 moves or +20 seconds after losing (once per level), double coins after winning.
 - **Going live:** install `react-native-google-mobile-ads`, which needs a development build (it does not run in Expo Go). Write an `AdService` that calls it, swap it in for `DevAdsProvider` in `src/app/_layout.tsx`, use Google's test ad IDs until release, and add the consent form (UMP) for the EU and UK and the tracking prompt for iOS.
 
+## Remove ads and purchases
+
+Purchases sit behind `features/purchases/service.ts`, like ads. Today `DevPurchasesProvider` shows a placeholder dialog and remembers the purchase outside the game's own save, so "Restore purchases" can be tried after "Reset progress". Buying sets `player.adsRemoved`, which stops interstitial ads. Rewarded ads stay available because the player chooses them. To go live: create a non-consumable product in App Store Connect (and later Play Console) whose ID matches `PRODUCTS.removeAds`, then add a store-backed `PurchaseService` using `expo-iap` or RevenueCat in a development build.
+
 ## AI
 
 The game does not call an AI model while you play. A server-side model would add cost, delay and privacy questions for little gain here. Where AI helps is around the game: generating store text and screenshots, designing sound and art, and reviewing the level curve. The greedy bot in `tests/helpers.ts` is the real tool for checking that levels are fair.

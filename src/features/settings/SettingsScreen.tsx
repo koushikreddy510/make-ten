@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Switch, View } from 'react-native';
 import { createStyles, radius, THEMES, useTheme } from '@/core/theme';
 import { Button, Screen, Text } from '@/core/ui';
 import { DIFFICULTIES } from '@/features/game/difficulty';
+import { adsRemovedSet } from '@/features/player/playerSlice';
+import { usePurchases } from '@/features/purchases/PurchasesProvider';
 import { progressReset } from '@/features/progress/progressSlice';
 import { hapticsSet, soundSet } from '@/features/settings/settingsSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -35,6 +37,29 @@ export function SettingsScreen() {
   const settings = useAppSelector((s) => s.settings);
   const difficulty = useAppSelector(selectDifficulty);
   const [confirming, setConfirming] = useState(false);
+  const purchases = usePurchases();
+  const adsRemoved = useAppSelector((s) => s.player.adsRemoved);
+  const [price, setPrice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    purchases.priceOfRemoveAds().then(setPrice);
+  }, [purchases]);
+
+  const buy = async () => {
+    const result = await purchases.buyRemoveAds();
+    if (result === 'purchased') {
+      dispatch(adsRemovedSet(true));
+      setNotice(null);
+    } else if (result === 'failed') setNotice('The purchase did not go through. You were not charged.');
+  };
+  const restore = async () => {
+    const owned = await purchases.restore();
+    if (owned.removeAds) {
+      dispatch(adsRemovedSet(true));
+      setNotice('Purchase restored. Ads are removed.');
+    } else setNotice('No earlier purchase was found for this account.');
+  };
 
   return (
     <Screen>
@@ -45,6 +70,13 @@ export function SettingsScreen() {
         <ToggleRow label="Sound" value={settings.sound} onChange={(v) => dispatch(soundSet(v))} />
         <ToggleRow label="Haptics" value={settings.haptics} onChange={(v) => dispatch(hapticsSet(v))} />
         <Button label="How to play" onPress={() => router.push('/tutorial')} />
+        {adsRemoved ? (
+          <Text variant="muted">Ads between levels are removed. Thank you!</Text>
+        ) : (
+          <Button label={price ? `Remove ads · ${price}` : 'Remove ads'} onPress={buy} />
+        )}
+        <Button label="Restore purchases" onPress={restore} />
+        {notice ? <Text variant="muted">{notice}</Text> : null}
         {confirming ? (
           <View style={styles.confirm}>
             <Text variant="muted" style={styles.warn}>This erases all levels, stars and coins on this device.</Text>

@@ -24,6 +24,9 @@ const playerSlice = createSlice({
     tutorialCompleted(state) {
       state.tutorialSeen = true;
     },
+    adsRemovedSet(state, action: PayloadAction<boolean>) {
+      state.adsRemoved = action.payload;
+    },
     coinsEarned(state, action: PayloadAction<number>) {
       state.coins += action.payload;
     },
@@ -35,5 +38,5 @@ const playerSlice = createSlice({
   },
 });
 
-export const { difficultyChosen, tutorialCompleted, coinsEarned } = playerSlice.actions;
+export const { difficultyChosen, tutorialCompleted, coinsEarned, adsRemovedSet } = playerSlice.actions;
 export const playerReducer = playerSlice.reducer;
