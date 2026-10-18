@@ -15,6 +15,15 @@ describe('board generation', () => {
       expect(findGroup(s.board, cfg.link)).not.toBeNull();
     }
   });
+  it.each(DIFFICULTY_ORDER)('%s boards use a good mix of digits, not just one', (id) => {
+    for (let level = 1; level <= LEVELS_PER_DIFFICULTY; level++) {
+      const tiles = newGame(id, level).board.flat() as number[];
+      const counts = new Map<number, number>();
+      tiles.forEach((v) => counts.set(v, (counts.get(v) ?? 0) + 1));
+      expect(counts.size).toBeGreaterThanOrEqual(6);
+      expect(Math.max(...counts.values()) / tiles.length).toBeLessThan(0.35);
+    }
+  });
   it('is the same every time for one level, and differs between levels', () => {
     expect(newGame('medium', 7).board).toEqual(newGame('medium', 7).board);
     expect(newGame('medium', 7).board).not.toEqual(newGame('medium', 8).board);
